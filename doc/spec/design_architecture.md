@@ -58,7 +58,7 @@ UI → TransactionService
 ```
 UI → TransactionService
    → DataRepository（取引履歴を取得）
-   → PortfolioSummary を集計して返却（保有株数・平均取得単価・累積拠出額）
+   → PortfolioSummary を集計して返却（保有株数・平均取得単価・累積拠出額・確定損益累計）
 ```
 
 ### 売却シミュレーション時（REQ-0016）

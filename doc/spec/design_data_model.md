@@ -74,7 +74,7 @@ Plan（持株会） 1 ──< Transaction（取引履歴）
 
 | 派生データ | 算出元 | 対応要求 |
 |----------|-------|---------|
-| PortfolioSummary（保有株数・平均取得単価・累積拠出額） | Transaction の集計 | REQ-0012 |
+| PortfolioSummary（保有株数・平均取得単価・累積拠出額・確定損益累計） | Transaction の集計 | REQ-0012, REQ-0010 |
 | SaleSimulation（評価損益・概算税額・手取り額） | 最新 Transaction + 入力株価 | REQ-0016 |
 
 ---
