@@ -8,14 +8,18 @@
 
 ## 1. レイヤー構成
 
-```
-┌──────────────────────────┐
-│  プレゼンテーション層      │  CLIコマンド / Web画面
-├──────────────────────────┤
-│  サービス層               │  ユースケース・ビジネスロジック
-├──────────────────────────┤
-│  インフラ層               │  データ永続化・CSV I/O・設定ファイル
-└──────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph presentation["プレゼンテーション層"]
+        UI["CLIコマンド / Web画面"]
+    end
+    subgraph service["サービス層"]
+        SVC["ユースケース・ビジネスロジック"]
+    end
+    subgraph infra["インフラ層"]
+        INFRA["データ永続化・CSV I/O・設定ファイル"]
+    end
+    presentation --> service --> infra
 ```
 
 ---
@@ -38,48 +42,84 @@
 
 ### 取引登録時
 
-```
-UI → TransactionService
-   → CalculationEngine（avg_cost, shares_held_after を計算）
-   → DataRepository（保存）
+```mermaid
+sequenceDiagram
+    participant UI
+    participant TransactionService
+    participant CalculationEngine
+    participant DataRepository
+
+    UI->>TransactionService: 取引データ
+    TransactionService->>CalculationEngine: avg_cost / shares_held_after を計算
+    CalculationEngine-->>TransactionService: 計算結果
+    TransactionService->>DataRepository: 保存
 ```
 
 ### 取引修正・削除時
 
-```
-UI → TransactionService
-   → DataRepository（対象取引を更新 or 削除）
-   → CalculationEngine（修正日以降の全取引を再計算）
-   → DataRepository（再計算結果を一括保存）
+```mermaid
+sequenceDiagram
+    participant UI
+    participant TransactionService
+    participant DataRepository
+    participant CalculationEngine
+
+    UI->>TransactionService: 修正 / 削除
+    TransactionService->>DataRepository: 対象取引を更新 or 削除
+    TransactionService->>CalculationEngine: 修正日以降の全取引を再計算
+    CalculationEngine-->>TransactionService: 再計算結果
+    TransactionService->>DataRepository: 再計算結果を一括保存
 ```
 
 ### サマリー確認時（REQ-0012）
 
-```
-UI → TransactionService
-   → DataRepository（取引履歴を取得）
-   → PortfolioSummary を集計して返却（保有株数・平均取得単価・累積拠出額・確定損益累計）
+```mermaid
+sequenceDiagram
+    participant UI
+    participant TransactionService
+    participant DataRepository
+
+    UI->>TransactionService: サマリー取得
+    TransactionService->>DataRepository: 取引履歴を取得
+    DataRepository-->>TransactionService: 取引履歴
+    TransactionService-->>UI: PortfolioSummary（保有株数・平均取得単価・累積拠出額・確定損益累計）
 ```
 
 ### 売却シミュレーション時（REQ-0016）
 
-```
-UI → CalculationEngine（現在株価・売却株数・avg_cost を入力）
-   → 評価損益・概算税額・手取り額を返却（永続化しない）
+```mermaid
+sequenceDiagram
+    participant UI
+    participant CalculationEngine
+
+    UI->>CalculationEngine: 現在株価・売却株数・avg_cost
+    CalculationEngine-->>UI: 評価損益・概算税額・手取り額（永続化しない）
 ```
 
 ### CSVエクスポート時（REQ-0013）
 
-```
-UI → CsvService
-   → DataRepository（取引履歴を取得）
-   → CSVファイルを出力
+```mermaid
+sequenceDiagram
+    participant UI
+    participant CsvService
+    participant DataRepository
+
+    UI->>CsvService: エクスポート要求
+    CsvService->>DataRepository: 取引履歴を取得
+    DataRepository-->>CsvService: 取引履歴
+    CsvService-->>UI: CSVファイル出力
 ```
 
 ### バックアップ時（REQ-0015）
 
-```
-UI → BackupService
-   → DataRepository（全エンティティを取得）
-   → バックアップファイルを出力
+```mermaid
+sequenceDiagram
+    participant UI
+    participant BackupService
+    participant DataRepository
+
+    UI->>BackupService: バックアップ要求
+    BackupService->>DataRepository: 全エンティティを取得
+    DataRepository-->>BackupService: 全エンティティ
+    BackupService-->>UI: バックアップファイル出力
 ```
