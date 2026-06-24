@@ -14,34 +14,37 @@ stock plan add [OPTIONS]
 
 | オプション | 必須 | 説明 |
 |---|---|---|
+| `--id TEXT` | 必須 | プランID（推奨16文字以下。例: `toyota`, `7203-jp`） |
 | `--name TEXT` | 必須 | 会社名 |
 | `--start DATE` | 必須 | 持株会の開始日（YYYY-MM-DD 形式） |
-| `--code TEXT` | 任意 | 証券コード |
+| `--ticker TEXT` | 任意 | ティッカーシンボル（例: `7203.T`, `AAPL`）。Yahoo Finance形式を推奨。 |
 
-`--name` と `--start` を省略するとプロンプトで入力を求められます。
+`--id`、`--name`、`--start` を省略するとプロンプトで入力を求められます。
 
 ### 実行例
 
 ```bash
-# オプションを直接指定
-stock plan add --name "サンプル株式会社" --start 2024-01-01 --code 1234
+# 日本株
+stock plan add --id toyota --name "トヨタ自動車" --start 2024-01-01 --ticker 7203.T
+
+# 米国株
+stock plan add --id apple --name "Apple Inc." --start 2024-01-01 --ticker AAPL
 
 # プロンプト入力
 stock plan add
-# 会社名: サンプル株式会社
+# プランID: toyota
+# 会社名: トヨタ自動車
 # 開始日 (YYYY-MM-DD): 2024-01-01
 ```
 
 ### 出力例
 
 ```
-持株会を追加しました: 550e8400-e29b-41d4-a716-446655440000
-  会社名: サンプル株式会社
+持株会を追加しました: toyota
+  会社名: トヨタ自動車
   開始日: 2024-01-01
-  証券コード: 1234
+  ティッカー: 7203.T
 ```
-
-表示された UUID が `plan_id` です。取引追加などで使用します。
 
 ---
 
@@ -56,9 +59,10 @@ stock plan list
 ### 出力例
 
 ```
-ID                                    会社名                  コード    開始日        状態
-------------------------------------------------------------------------------------------
-550e8400-e29b-41d4-a716-446655440000  サンプル株式会社        1234      2024-01-01    有効
+ID      会社名                ティッカー    開始日        状態
+------  ------------------  ------------  ----------  ----
+toyota  トヨタ自動車          7203.T        2024-01-01  有効
+apple   Apple Inc.           AAPL          2024-03-01  有効
 ```
 
 ---
@@ -80,20 +84,20 @@ stock plan edit PLAN_ID [OPTIONS]
 | オプション | 説明 |
 |---|---|
 | `--name TEXT` | 会社名を変更 |
-| `--code TEXT` | 証券コードを変更 |
+| `--ticker TEXT` | ティッカーシンボルを変更 |
 | `--start DATE` | 開始日を変更（YYYY-MM-DD） |
 | `--end DATE` | 終了日を設定（YYYY-MM-DD） |
 | `--active` | 有効に変更 |
 | `--inactive` | 無効に変更 |
 
-指定したオプションのみ更新されます。
+指定したオプションのみ更新されます。プランIDは変更できません。
 
 ### 実行例
 
 ```bash
-# 会社名と証券コードを変更
-stock plan edit 550e8400-e29b-41d4-a716-446655440000 --name "新社名株式会社" --code 5678
+# ティッカーを設定
+stock plan edit toyota --ticker 7203.T
 
 # 持株会を終了（終了日を設定して無効化）
-stock plan edit 550e8400-e29b-41d4-a716-446655440000 --end 2024-12-31 --inactive
+stock plan edit toyota --end 2024-12-31 --inactive
 ```

@@ -55,7 +55,7 @@ class BackupService:
         return {
             "plan_id": plan.plan_id,
             "company_name": plan.company_name,
-            "stock_code": plan.stock_code,
+            "ticker": plan.ticker,
             "start_date": plan.start_date.isoformat(),
             "end_date": plan.end_date.isoformat() if plan.end_date else None,
             "is_active": plan.is_active,
@@ -67,7 +67,7 @@ class BackupService:
         return Plan(
             plan_id=d["plan_id"],
             company_name=d["company_name"],
-            stock_code=d.get("stock_code"),
+            ticker=d.get("ticker"),
             start_date=date.fromisoformat(d["start_date"]),
             end_date=date.fromisoformat(d["end_date"]) if d.get("end_date") else None,
             is_active=d["is_active"],

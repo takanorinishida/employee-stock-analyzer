@@ -30,7 +30,7 @@ def _make_services(tmp_path):
 
 
 def _create_plan(plan_svc):
-    return plan_svc.create_plan("テスト会社", date(2024, 1, 1))
+    return plan_svc.create_plan("T001", "テスト会社", date(2024, 1, 1))
 
 
 # ── 取引追加 ──────────────────────────────────────────────────────────────

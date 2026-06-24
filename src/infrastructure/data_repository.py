@@ -40,7 +40,7 @@ class DataRepository:
             INSERT INTO plans VALUES (?,?,?,?,?,?,?,?)
             ON CONFLICT(plan_id) DO UPDATE SET
                 company_name = excluded.company_name,
-                stock_code   = excluded.stock_code,
+                ticker       = excluded.ticker,
                 start_date   = excluded.start_date,
                 end_date     = excluded.end_date,
                 is_active    = excluded.is_active,
@@ -50,7 +50,7 @@ class DataRepository:
             conn.execute(sql, (
                 plan.plan_id,
                 plan.company_name,
-                plan.stock_code,
+                plan.ticker,
                 plan.start_date.isoformat(),
                 plan.end_date.isoformat() if plan.end_date else None,
                 1 if plan.is_active else 0,
@@ -76,7 +76,7 @@ class DataRepository:
         return Plan(
             plan_id=row["plan_id"],
             company_name=row["company_name"],
-            stock_code=row["stock_code"],
+            ticker=row["ticker"],
             start_date=date.fromisoformat(row["start_date"]),
             end_date=date.fromisoformat(row["end_date"]) if row["end_date"] else None,
             is_active=bool(row["is_active"]),
