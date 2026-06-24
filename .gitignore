@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# 仮想環境
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# データ・出力ファイル
+*.db
+*.csv
+*.json.bak
+*.bak
+
+# 環境変数
+.env
+.env.local
