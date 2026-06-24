@@ -12,78 +12,103 @@
 
 2パターンの平均取得単価を常に並行して計算・保持する。
 
-### パターンA: avg_cost_with（奨励金・配当金をコストに含める）
+### 変数記号の定義
+
+| 記号 | 対応フィールド | 意味 |
+|------|------------|------|
+| $n$ | `shares_held_after`（取引前） | 現保有株数 |
+| $n'$ | `shares_held_after`（取引後） | 新保有株数 |
+| $q$ | `shares_quantity` | 取得・売却株数 |
+| $p$ | — | 取得単価（中間計算値） |
+| $\bar{c}_{+}$ | `avg_cost_with`（取引前） | 平均取得単価（奨励金・配当金込み） |
+| $\bar{c}_{+}'$ | `avg_cost_with`（取引後） | 同上・更新後 |
+| $\bar{c}_{-}$ | `avg_cost_without`（取引前） | 平均取得単価（拠出金のみ） |
+| $\bar{c}_{-}'$ | `avg_cost_without`（取引後） | 同上・更新後 |
+| $r_\text{前}$ | `split_ratio_before` | 分割前比率 |
+| $r_\text{後}$ | `split_ratio_after` | 分割後比率 |
+| $s$ | `sale_price_per_share` / `current_price` | 売却単価・現在株価 |
+| $\tau$ | `capital_gains_tax_rate` | 譲渡所得税率 |
+| $G_{+}$ | `realized_gain_loss_with` | 確定損益（込み） |
+| $G_{-}$ | `realized_gain_loss_without` | 確定損益（除き） |
+
+---
+
+### パターンA: `avg_cost_with`（奨励金・配当金をコストに含める）
 
 **CONTRIBUTION 時:**
 
 $$
-\text{取得単価} = \frac{\text{拠出金} + \text{奨励金}}{\text{取得株数}}
+p = \frac{\text{拠出金} + \text{奨励金}}{q}
 $$
 
 $$
-\text{新 avg\_cost\_with} = \frac{\text{現保有株数} \times \text{現 avg\_cost\_with} + \text{取得株数} \times \text{取得単価}}{\text{現保有株数} + \text{取得株数}}
+\bar{c}_{+}' = \frac{n \cdot \bar{c}_{+} + q \cdot p}{n + q}
 $$
 
 **DIVIDEND_REINVESTMENT 時:**
 
 $$
-\text{取得単価} = \frac{\text{配当再投資額}}{\text{取得株数}}
+p = \frac{\text{配当再投資額}}{q}
 $$
 
 $$
-\text{新 avg\_cost\_with} = \frac{\text{現保有株数} \times \text{現 avg\_cost\_with} + \text{取得株数} \times \text{取得単価}}{\text{現保有株数} + \text{取得株数}}
+\bar{c}_{+}' = \frac{n \cdot \bar{c}_{+} + q \cdot p}{n + q}
 $$
 
-### パターンB: avg_cost_without（拠出金のみをコストとする）
+---
+
+### パターンB: `avg_cost_without`（拠出金のみをコストとする）
 
 **CONTRIBUTION 時:**
 
 $$
-\text{取得単価} = \frac{\text{拠出金}}{\text{取得株数}} \quad (\text{奨励金を除く})
+p = \frac{\text{拠出金}}{q} \quad (\text{奨励金を除く})
 $$
 
 $$
-\text{新 avg\_cost\_without} = \frac{\text{現保有株数} \times \text{現 avg\_cost\_without} + \text{取得株数} \times \text{取得単価}}{\text{現保有株数} + \text{取得株数}}
+\bar{c}_{-}' = \frac{n \cdot \bar{c}_{-} + q \cdot p}{n + q}
 $$
 
 **DIVIDEND_REINVESTMENT 時:**
 
 $$
-\text{取得単価} = 0 \quad (\text{配当再投資はコストとして計上しない})
+p = 0 \quad (\text{配当再投資はコストとして計上しない})
 $$
 
 $$
-\text{新 avg\_cost\_without} = \frac{\text{現保有株数} \times \text{現 avg\_cost\_without}}{\text{現保有株数} + \text{取得株数}}
+\bar{c}_{-}' = \frac{n \cdot \bar{c}_{-}}{n + q}
 $$
 
-> 株数が増え取得単価 0 のため、avg_cost_without は減少する。
+> 株数が増え $p = 0$ のため、$\bar{c}_{-}$ は減少する。
+
+---
 
 ### 両パターン共通: SALE 時
 
-$\text{avg\_cost}$ は変化しない。
+$\bar{c}_{+}$, $\bar{c}_{-}$ は変化しない。
 
 $$
-\text{新保有株数} = \text{現保有株数} - \text{売却株数}
+n' = n - q
 $$
 
 ### 両パターン共通: STOCK_SPLIT / REVERSE_SPLIT 時
 
 $$
-\text{新保有株数} = \text{現保有株数} \times \frac{\text{split\_ratio\_after}}{\text{split\_ratio\_before}}
+n' = n \times \frac{r_\text{後}}{r_\text{前}}
 $$
 
 $$
-\text{新 avg\_cost\_with} = \text{現 avg\_cost\_with} \times \frac{\text{split\_ratio\_before}}{\text{split\_ratio\_after}}
+\bar{c}_{+}' = \bar{c}_{+} \times \frac{r_\text{前}}{r_\text{後}}
 $$
 
 $$
-\text{新 avg\_cost\_without} = \text{現 avg\_cost\_without} \times \frac{\text{split\_ratio\_before}}{\text{split\_ratio\_after}}
+\bar{c}_{-}' = \bar{c}_{-} \times \frac{r_\text{前}}{r_\text{後}}
 $$
 
 ### 保有株数が 0 になった場合
 
 $$
-\text{avg\_cost\_with} = 0, \quad \text{avg\_cost\_without} = 0
+\bar{c}_{+} = \bar{c}_{-} = 0
 $$
 
 ---
@@ -93,11 +118,11 @@ $$
 対応要求: REQ-0010
 
 $$
-\text{realized\_gain\_loss\_with} = (\text{sale\_price\_per\_share} - \text{avg\_cost\_with}) \times \text{売却株数}
+G_{+} = (s - \bar{c}_{+}) \times q
 $$
 
 $$
-\text{realized\_gain\_loss\_without} = (\text{sale\_price\_per\_share} - \text{avg\_cost\_without}) \times \text{売却株数}
+G_{-} = (s - \bar{c}_{-}) \times q
 $$
 
 ---
@@ -106,14 +131,14 @@ $$
 
 対応要求: REQ-0011, REQ-1003
 
-$\text{capital\_gains\_tax\_rate}$ は設定ファイルから読み込む（デフォルト: $0.20315$）。
+$\tau$（`capital_gains_tax_rate`）は設定ファイルから読み込む（デフォルト: $0.20315$）。
 
 $$
-\text{概算税額} = \max(\text{売却損益},\ 0) \times \text{capital\_gains\_tax\_rate}
+\text{概算税額} = \max(G,\ 0) \times \tau
 $$
 
 $$
-\text{税引後手取り} = \text{sale\_price\_per\_share} \times \text{売却株数} - \text{概算税額}
+\text{税引後手取り} = s \times q - \text{概算税額}
 $$
 
 ---
@@ -137,34 +162,34 @@ $$
 対応要求: REQ-0016
 
 入力:
-- $\text{current\_price}$: 現在株価（ユーザー入力）
-- $\text{simulation\_shares}$: シミュレーション売却株数（省略時は全保有株数）
+- $s$（`current_price`）: 現在株価（ユーザー入力）
+- $q$（`simulation_shares`）: シミュレーション売却株数（省略時は全保有株数）
 
 $$
-\text{評価損益\_with} = (\text{current\_price} - \text{avg\_cost\_with}) \times \text{simulation\_shares}
-$$
-
-$$
-\text{評価損益\_without} = (\text{current\_price} - \text{avg\_cost\_without}) \times \text{simulation\_shares}
+\text{評価損益}_{+} = (s - \bar{c}_{+}) \times q
 $$
 
 $$
-\text{概算税額\_with} = \max(\text{評価損益\_with},\ 0) \times \text{capital\_gains\_tax\_rate}
+\text{評価損益}_{-} = (s - \bar{c}_{-}) \times q
 $$
 
 $$
-\text{概算税額\_without} = \max(\text{評価損益\_without},\ 0) \times \text{capital\_gains\_tax\_rate}
+\text{概算税額}_{+} = \max(\text{評価損益}_{+},\ 0) \times \tau
 $$
 
 $$
-\text{税引後手取り\_with} = \text{current\_price} \times \text{simulation\_shares} - \text{概算税額\_with}
+\text{概算税額}_{-} = \max(\text{評価損益}_{-},\ 0) \times \tau
 $$
 
 $$
-\text{税引後手取り\_without} = \text{current\_price} \times \text{simulation\_shares} - \text{概算税額\_without}
+\text{税引後手取り}_{+} = s \times q - \text{概算税額}_{+}
 $$
 
-出力: 評価損益 / 概算税額 / 税引後手取り（各 with / without）
+$$
+\text{税引後手取り}_{-} = s \times q - \text{概算税額}_{-}
+$$
+
+出力: 評価損益 / 概算税額 / 税引後手取り（各 $+$ / $-$）
 
 ---
 
@@ -187,7 +212,7 @@ $$
 
 前提: 保有 0 株からスタート
 
-| # | イベント | 詳細 | avg_cost_with | avg_cost_without | 保有株数 |
+| # | イベント | 詳細 | `avg_cost_with` | `avg_cost_without` | 保有株数 |
 |---|---------|------|:---:|:---:|:---:|
 | 1 | CONTRIBUTION | 拠出 10,000・奨励 500・取得 10 株 | 1,050.00 | 1,000.00 | 10.0000 |
 | 2 | CONTRIBUTION | 拠出 10,000・奨励 500・取得 9 株 | 1,105.26 | 1,052.63 | 19.0000 |
@@ -198,35 +223,35 @@ $$
 **計算検証（#3: DIVIDEND_REINVESTMENT）**
 
 $$
-\text{avg\_cost\_with} = \frac{19 \times 1{,}105.26 + 1 \times 950}{20} = \frac{21{,}949.94}{20} = 1{,}097.50 \checkmark
+\bar{c}_{+}' = \frac{19 \times 1{,}105.26 + 1 \times 950}{20} = \frac{21{,}949.94}{20} = 1{,}097.50 \checkmark
 $$
 
 $$
-\text{avg\_cost\_without} = \frac{19 \times 1{,}052.63 + 1 \times 0}{20} = \frac{19{,}999.97}{20} = 1{,}000.00 \checkmark
+\bar{c}_{-}' = \frac{19 \times 1{,}052.63 + 1 \times 0}{20} = \frac{19{,}999.97}{20} = 1{,}000.00 \checkmark
 $$
 
 **計算検証（#4: SALE）**
 
 $$
-\text{realized\_gain\_loss\_with} = (1{,}300 - 1{,}097.50) \times 5 = 1{,}012.50
+G_{+} = (1{,}300 - 1{,}097.50) \times 5 = 1{,}012.50
 $$
 
 $$
-\text{realized\_gain\_loss\_without} = (1{,}300 - 1{,}000.00) \times 5 = 1{,}500.00
+G_{-} = (1{,}300 - 1{,}000.00) \times 5 = 1{,}500.00
 $$
 
-$\text{avg\_cost}$ は変化しない $\checkmark$
+$\bar{c}_{+}$, $\bar{c}_{-}$ は変化しない $\checkmark$
 
 **計算検証（#5: STOCK_SPLIT 2:1）**
 
 $$
-\text{新保有株数} = 15 \times \frac{2}{1} = 30.0000 \checkmark
+n' = 15 \times \frac{2}{1} = 30.0000 \checkmark
 $$
 
 $$
-\text{新 avg\_cost\_with} = 1{,}097.50 \times \frac{1}{2} = 548.75 \checkmark
+\bar{c}_{+}' = 1{,}097.50 \times \frac{1}{2} = 548.75 \checkmark
 $$
 
 $$
-\text{新 avg\_cost\_without} = 1{,}000.00 \times \frac{1}{2} = 500.00 \checkmark
+\bar{c}_{-}' = 1{,}000.00 \times \frac{1}{2} = 500.00 \checkmark
 $$
