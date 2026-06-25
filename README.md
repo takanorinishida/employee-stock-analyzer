@@ -37,7 +37,7 @@ stock --help
 ### 1. 持株会を登録する
 
 ```bash
-stock plan add --name "サンプル株式会社" --start 2024-01-01 --code 1234
+stock plan add --id sample --name "サンプル株式会社" --start 2024-01-01
 ```
 
 ### 2. プラン ID を確認する
@@ -50,33 +50,33 @@ stock plan list
 
 ```bash
 # 拠出（毎月の積み立て）
-stock transaction add <plan_id> --type CONTRIBUTION --date 2024-01-10 \
+stock transaction add sample --type CONTRIBUTION --date 2024-01-10 \
   --shares 10 --contribution 10000 --incentive 500
 
 # 配当再投資
-stock transaction add <plan_id> --type DIVIDEND_REINVESTMENT --date 2024-03-01 \
+stock transaction add sample --type DIVIDEND_REINVESTMENT --date 2024-03-01 \
   --shares 1 --dividend 950
 
 # 売却
-stock transaction add <plan_id> --type SALE --date 2024-06-01 \
+stock transaction add sample --type SALE --date 2024-06-01 \
   --shares 5 --price 1300
 
 # 株式分割（1株→2株）
-stock transaction add <plan_id> --type STOCK_SPLIT --date 2024-09-01 \
+stock transaction add sample --type STOCK_SPLIT --date 2024-09-01 \
   --split-before 1 --split-after 2
 ```
 
 ### 4. 保有状況を確認する
 
 ```bash
-stock summary <plan_id>
+stock summary sample
 ```
 
 ### 5. 売却シミュレーションを実行する
 
 ```bash
 # 現在株価 1500 円で全株売却した場合を試算
-stock simulate <plan_id> --price 1500
+stock simulate sample --price 1500
 ```
 
 ## コマンド一覧
@@ -85,15 +85,15 @@ stock simulate <plan_id> --price 1500
 |---|---|
 | `plan add` | 持株会を追加 |
 | `plan list` | 持株会一覧を表示 |
-| `plan edit <plan_id>` | 持株会を編集 |
-| `transaction add <plan_id>` | 取引を追加 |
-| `transaction list <plan_id>` | 取引一覧を表示 |
+| `plan edit sample` | 持株会を編集 |
+| `transaction add sample` | 取引を追加 |
+| `transaction list sample` | 取引一覧を表示 |
 | `transaction edit <transaction_id>` | 取引を編集（後続を自動再計算） |
 | `transaction delete <transaction_id>` | 取引を削除（後続を自動再計算） |
-| `summary <plan_id>` | 保有状況サマリーを表示 |
-| `simulate <plan_id>` | 売却シミュレーションを実行 |
-| `csv export <plan_id> <output>` | 取引を CSV にエクスポート |
-| `csv import <plan_id> <input>` | CSV から取引をインポート |
+| `summary sample` | 保有状況サマリーを表示 |
+| `simulate sample` | 売却シミュレーションを実行 |
+| `csv export sample <output>` | 取引を CSV にエクスポート |
+| `csv import sample <input>` | CSV から取引をインポート |
 | `backup export <output>` | 全データを JSON にバックアップ |
 | `backup import <input>` | JSON からデータを復元 |
 
