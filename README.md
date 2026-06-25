@@ -23,13 +23,19 @@
 ```bash
 git clone <このリポジトリのURL>
 cd employee-stock-analyzer
-pip install -e .
+bash setup.sh
 ```
 
-インストール後、`stock` コマンドが使えるようになります。
+スクリプトが Python 3.11 以上の有無を確認し、なければインストールするか尋ねます。
+セットアップ完了後、以下のどちらかの方法で `stock` コマンドを使えます。
 
 ```bash
+# venv を有効化して使う場合
+source venv/bin/activate
 stock --help
+
+# 直接実行する場合
+venv/bin/stock --help
 ```
 
 ## クイックスタート
