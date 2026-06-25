@@ -1,8 +1,11 @@
+import re
 from datetime import date, datetime
 from typing import Optional
 
 from domain.models import Plan
 from infrastructure.data_repository import DataRepository
+
+_PLAN_ID_PATTERN = re.compile(r"^[a-zA-Z0-9._-]+$")
 
 
 class PlanService:
@@ -16,6 +19,13 @@ class PlanService:
         start_date: date,
         ticker: Optional[str] = None,
     ) -> Plan:
+        if not _PLAN_ID_PATTERN.match(plan_id):
+            raise ValueError(
+                f"プランIDに使用できない文字が含まれています: {plan_id!r}\n"
+                "使用可能: 英数字、ハイフン(-)、アンダースコア(_)、ピリオド(.)"
+            )
+        if self._repo.get_plan(plan_id) is not None:
+            raise ValueError(f"プランID '{plan_id}' は既に使用されています")
         now = datetime.now()
         plan = Plan(
             plan_id=plan_id,
@@ -26,12 +36,7 @@ class PlanService:
             created_at=now,
             updated_at=now,
         )
-        try:
-            self._repo.save_plan(plan)
-        except Exception as e:
-            if "UNIQUE constraint failed" in str(e):
-                raise ValueError(f"プランID '{plan_id}' は既に使用されています")
-            raise
+        self._repo.save_plan(plan)
         return plan
 
     def update_plan(
