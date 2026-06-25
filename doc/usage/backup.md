@@ -33,9 +33,9 @@ stock backup export ./backup_20240101.json
   "exported_at": "2024-01-01T12:00:00.000000",
   "plans": [
     {
-      "plan_id": "550e8400-...",
-      "company_name": "サンプル株式会社",
-      "stock_code": "1234",
+      "plan_id": "toyota",
+      "company_name": "トヨタ自動車",
+      "ticker": "7203.T",
       "start_date": "2024-01-01",
       "end_date": null,
       "is_active": true,
@@ -46,7 +46,7 @@ stock backup export ./backup_20240101.json
   "transactions": [
     {
       "transaction_id": "a1b2c3d4-...",
-      "plan_id": "550e8400-...",
+      "plan_id": "toyota",
       "transaction_type": "CONTRIBUTION",
       "transaction_date": "2024-01-10",
       "shares_quantity": "10",

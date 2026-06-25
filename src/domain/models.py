@@ -21,7 +21,7 @@ class Plan:
     is_active: bool
     created_at: datetime
     updated_at: datetime
-    stock_code: Optional[str] = None
+    ticker: Optional[str] = None
     end_date: Optional[date] = None
 
 

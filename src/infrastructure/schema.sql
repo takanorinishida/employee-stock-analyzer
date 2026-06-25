@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS plans (
     plan_id     TEXT PRIMARY KEY,
     company_name TEXT NOT NULL,
-    stock_code  TEXT,
+    ticker      TEXT,
     start_date  TEXT NOT NULL,
     end_date    TEXT,
     is_active   INTEGER NOT NULL DEFAULT 1,
