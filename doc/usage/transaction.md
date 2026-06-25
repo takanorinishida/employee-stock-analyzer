@@ -48,27 +48,27 @@ stock transaction add PLAN_ID [OPTIONS]
 
 ```bash
 # 拠出: 10,000円拠出・500円奨励で10株取得
-stock transaction add <plan_id> \
+stock transaction add toyota \
   --type CONTRIBUTION --date 2024-01-10 \
   --shares 10 --contribution 10000 --incentive 500
 
 # 配当再投資: 950円配当で1株取得
-stock transaction add <plan_id> \
+stock transaction add toyota \
   --type DIVIDEND_REINVESTMENT --date 2024-03-01 \
   --shares 1 --dividend 950
 
 # 売却: 5株を1,300円で売却
-stock transaction add <plan_id> \
+stock transaction add toyota \
   --type SALE --date 2024-06-01 \
   --shares 5 --price 1300
 
 # 株式分割: 1株→2株（2:1分割）
-stock transaction add <plan_id> \
+stock transaction add toyota \
   --type STOCK_SPLIT --date 2024-09-01 \
   --split-before 1 --split-after 2
 
 # 株式合併: 2株→1株（2:1合併）
-stock transaction add <plan_id> \
+stock transaction add toyota \
   --type REVERSE_SPLIT --date 2024-09-01 \
   --split-before 2 --split-after 1
 ```

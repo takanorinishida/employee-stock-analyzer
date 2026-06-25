@@ -67,10 +67,10 @@ stock simulate PLAN_ID --price PRICE [--shares SHARES]
 
 ```bash
 # 全株を 1,500 円で売却した場合
-stock simulate <plan_id> --price 1500
+stock simulate toyota --price 1500
 
 # 10 株だけ 1,500 円で売却した場合
-stock simulate <plan_id> --price 1500 --shares 10
+stock simulate toyota --price 1500 --shares 10
 ```
 
 ### 出力例
