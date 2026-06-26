@@ -12,6 +12,7 @@ _EXPORT_FIELDS = [
     "shares_quantity",
     "contribution_amount",
     "incentive_amount",
+    "carryover_amount",
     "dividend_amount",
     "sale_price_per_share",
     "split_ratio_before",
@@ -21,6 +22,7 @@ _EXPORT_FIELDS = [
     "shares_held_after",
     "realized_gain_loss_with",
     "realized_gain_loss_without",
+    "employee_carryover_amount",
 ]
 
 _IMPORT_FIELDS = [
@@ -29,6 +31,7 @@ _IMPORT_FIELDS = [
     "shares_quantity",
     "contribution_amount",
     "incentive_amount",
+    "carryover_amount",
     "dividend_amount",
     "sale_price_per_share",
     "split_ratio_before",
@@ -60,6 +63,7 @@ class CsvService:
                     "shares_quantity": str(tx.shares_quantity) if tx.shares_quantity is not None else "",
                     "contribution_amount": str(tx.contribution_amount) if tx.contribution_amount is not None else "",
                     "incentive_amount": str(tx.incentive_amount) if tx.incentive_amount is not None else "",
+                    "carryover_amount": str(tx.carryover_amount) if tx.carryover_amount is not None else "",
                     "dividend_amount": str(tx.dividend_amount) if tx.dividend_amount is not None else "",
                     "sale_price_per_share": str(tx.sale_price_per_share) if tx.sale_price_per_share is not None else "",
                     "split_ratio_before": str(tx.split_ratio_before) if tx.split_ratio_before is not None else "",
@@ -69,6 +73,7 @@ class CsvService:
                     "shares_held_after": str(tx.shares_held_after),
                     "realized_gain_loss_with": str(tx.realized_gain_loss_with) if tx.realized_gain_loss_with is not None else "",
                     "realized_gain_loss_without": str(tx.realized_gain_loss_without) if tx.realized_gain_loss_without is not None else "",
+                    "employee_carryover_amount": str(tx.employee_carryover_amount) if tx.employee_carryover_amount is not None else "",
                 })
         return len(transactions)
 
@@ -112,6 +117,8 @@ class CsvService:
             result["split_ratio_before"] = int(row["split_ratio_before"])
         if row.get("split_ratio_after"):
             result["split_ratio_after"] = int(row["split_ratio_after"])
+        if row.get("carryover_amount"):
+            result["carryover_amount"] = Decimal(row["carryover_amount"])
         return result
 
     def _validate_row(self, row: dict, line: int) -> list[str]:
@@ -140,7 +147,7 @@ class CsvService:
 
         # 数値フィールドの形式チェック
         for field in ["shares_quantity", "contribution_amount", "incentive_amount",
-                      "dividend_amount", "sale_price_per_share"]:
+                      "dividend_amount", "sale_price_per_share", "carryover_amount"]:
             val = row.get(field, "").strip()
             if val:
                 try:

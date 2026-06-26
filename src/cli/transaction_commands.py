@@ -52,8 +52,10 @@ def transaction():
               help="売却単価")
 @click.option("--split-before", default=None, type=int, help="分割前株数")
 @click.option("--split-after", default=None, type=int, help="分割後株数")
+@click.option("--carryover", default=None, callback=_parse_decimal, is_eager=False,
+              help="翌月繰越金（CONTRIBUTION 時）")
 def transaction_add(plan_id, tx_type, tx_date, shares, contribution, incentive,
-                    dividend, price, split_before, split_after):
+                    dividend, price, split_before, split_after, carryover):
     """取引を追加する"""
     try:
         d = date.fromisoformat(tx_date)
@@ -75,6 +77,8 @@ def transaction_add(plan_id, tx_type, tx_date, shares, contribution, incentive,
         kwargs["split_ratio_before"] = split_before
     if split_after is not None:
         kwargs["split_ratio_after"] = split_after
+    if carryover is not None:
+        kwargs["carryover_amount"] = carryover
     try:
         tx = _svc().add_transaction(plan_id, tt, d, **kwargs)
     except (ValueError, Exception) as e:
@@ -82,6 +86,8 @@ def transaction_add(plan_id, tx_type, tx_date, shares, contribution, incentive,
     click.echo(f"取引を追加しました: {tx.transaction_id}")
     click.echo(f"  種別: {tx.transaction_type.value}  日付: {tx.transaction_date}")
     click.echo(f"  保有株数: {tx.shares_held_after}  平均取得単価(奨励込): {tx.avg_cost_with}  (拠出のみ): {tx.avg_cost_without}")
+    if tx.transaction_type.value == "CONTRIBUTION" and tx.carryover_amount is not None:
+        click.echo(f"  翌月繰越金: {tx.carryover_amount}")
 
 
 @transaction.command("list")
@@ -95,15 +101,16 @@ def transaction_list(plan_id):
     if not txs:
         click.echo("取引が登録されていません。")
         return
-    header = f"{'ID':36}  {'日付':<12}  {'種別':<25}  {'株数':>10}  {'平均(込)':>10}  {'平均(除)':>10}  {'損益(込)':>10}"
+    header = f"{'ID':36}  {'日付':<12}  {'種別':<25}  {'株数':>10}  {'平均(込)':>10}  {'平均(除)':>10}  {'損益(込)':>10}  {'翌月繰越':>10}"
     click.echo(header)
-    click.echo("-" * 130)
+    click.echo("-" * 145)
     for tx in txs:
         gain = str(tx.realized_gain_loss_with) if tx.realized_gain_loss_with is not None else "-"
         qty = str(tx.shares_quantity) if tx.shares_quantity is not None else "-"
+        carry = str(tx.carryover_amount) if tx.carryover_amount is not None else "-"
         click.echo(
             f"{tx.transaction_id}  {tx.transaction_date}  {tx.transaction_type.value:<25}  "
-            f"{qty:>10}  {tx.avg_cost_with:>10}  {tx.avg_cost_without:>10}  {gain:>10}"
+            f"{qty:>10}  {tx.avg_cost_with:>10}  {tx.avg_cost_without:>10}  {gain:>10}  {carry:>10}"
         )
 
 
@@ -117,8 +124,10 @@ def transaction_list(plan_id):
 @click.option("--price", default=None, callback=_parse_decimal, is_eager=False, help="売却単価")
 @click.option("--split-before", default=None, type=int, help="分割前株数")
 @click.option("--split-after", default=None, type=int, help="分割後株数")
+@click.option("--carryover", default=None, callback=_parse_decimal, is_eager=False,
+              help="翌月繰越金（CONTRIBUTION 時）")
 def transaction_edit(transaction_id, tx_date, shares, contribution, incentive,
-                     dividend, price, split_before, split_after):
+                     dividend, price, split_before, split_after, carryover):
     """取引を編集する（後続取引を自動再計算）"""
     kwargs = {}
     if tx_date is not None:
@@ -140,6 +149,8 @@ def transaction_edit(transaction_id, tx_date, shares, contribution, incentive,
         kwargs["split_ratio_before"] = split_before
     if split_after is not None:
         kwargs["split_ratio_after"] = split_after
+    if carryover is not None:
+        kwargs["carryover_amount"] = carryover
     if not kwargs:
         click.echo("変更する項目がありません。")
         return

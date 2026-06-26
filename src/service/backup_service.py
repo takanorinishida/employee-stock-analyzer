@@ -96,6 +96,8 @@ class BackupService:
             "shares_held_after": str(tx.shares_held_after),
             "realized_gain_loss_with": opt_d(tx.realized_gain_loss_with),
             "realized_gain_loss_without": opt_d(tx.realized_gain_loss_without),
+            "carryover_amount": opt_d(tx.carryover_amount),
+            "employee_carryover_amount": opt_d(tx.employee_carryover_amount),
             "created_at": tx.created_at.isoformat(),
             "updated_at": tx.updated_at.isoformat(),
         }
@@ -121,6 +123,8 @@ class BackupService:
             shares_held_after=Decimal(d["shares_held_after"]),
             realized_gain_loss_with=opt_d(d.get("realized_gain_loss_with")),
             realized_gain_loss_without=opt_d(d.get("realized_gain_loss_without")),
+            carryover_amount=opt_d(d.get("carryover_amount")),
+            employee_carryover_amount=opt_d(d.get("employee_carryover_amount")),
             created_at=datetime.fromisoformat(d["created_at"]),
             updated_at=datetime.fromisoformat(d["updated_at"]),
         )

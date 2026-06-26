@@ -30,6 +30,9 @@
 | $\tau$ | `capital_gains_tax_rate` | 譲渡所得税率 |
 | $G_{+}$ | `realized_gain_loss_with` | 確定損益（込み） |
 | $G_{-}$ | `realized_gain_loss_without` | 確定損益（除き） |
+| $C$ | `carryover_amount` | 翌月繰越金（CONTRIBUTION 時オプション、省略時 0） |
+| $C_\text{prev}$ | 前 CONTRIBUTION の `carryover_amount` | 前月繰越金（前月の $C$、初回は 0） |
+| $E_\text{prev}$ | 前 CONTRIBUTION の `employee_carryover_amount` | 前月繰越金の拠出金按分分（計算値、初回は 0） |
 
 ---
 
@@ -37,13 +40,21 @@
 
 **CONTRIBUTION 時:**
 
+繰越金 $C$（翌月繰越金）が指定された場合、実際の株式購入金額を使って単価を算出する。
+
 $$
-p = \frac{\text{拠出金} + \text{奨励金}}{q}
+\text{実購入額} = C_\text{prev} + \text{拠出金} + \text{奨励金} - C
+$$
+
+$$
+p = \frac{\text{実購入額}}{q}
 $$
 
 $$
 \bar{c}_{+}' = \frac{n \cdot \bar{c}_{+} + q \cdot p}{n + q}
 $$
+
+> $C = 0$（省略時を含む）かつ $C_\text{prev} = 0$ の場合、$\text{実購入額} = \text{拠出金} + \text{奨励金}$ となり旧来の計算式に縮退する。
 
 **DIVIDEND_REINVESTMENT 時:**
 
@@ -61,13 +72,31 @@ $$
 
 **CONTRIBUTION 時:**
 
+繰越金のうち拠出金按分分を追跡する。
+
 $$
-p = \frac{\text{拠出金}}{q} \quad (\text{奨励金を除く})
+\text{拠出金可用額} = E_\text{prev} + \text{拠出金}
+$$
+
+$$
+\text{拠出金実購入額} = \text{拠出金可用額} \times \frac{\text{実購入額}}{C_\text{prev} + \text{拠出金} + \text{奨励金}}
+$$
+
+$$
+p = \frac{\text{拠出金実購入額}}{q}
 $$
 
 $$
 \bar{c}_{-}' = \frac{n \cdot \bar{c}_{-} + q \cdot p}{n + q}
 $$
+
+翌月繰越金の拠出金按分分（次の計算サイクルの $E_\text{prev}$）:
+
+$$
+E = \text{拠出金可用額} \times \frac{C}{C_\text{prev} + \text{拠出金} + \text{奨励金}}
+$$
+
+> $C = 0$ かつ $C_\text{prev} = 0$ の場合、$p = \dfrac{\text{拠出金}}{q}$ となり旧来の計算式に縮退する。
 
 **DIVIDEND_REINVESTMENT 時:**
 
@@ -151,8 +180,9 @@ $$
 2. 同じ `plan_id` の全取引を `transaction_date` 昇順で取得する
 3. 修正日以降の取引を先頭から順に再計算する:
    1. 前取引の `shares_held_after` / `avg_cost_with` / `avg_cost_without` を引き継ぐ
-   2. セクション 1 の計算式で新しい `avg_cost` と `shares_held_after` を算出する
-   3. `transaction_type` が `SALE` の場合は `realized_gain_loss` も再計算する
+   2. CONTRIBUTION 取引が存在する場合、修正日より前の直近 CONTRIBUTION の `carryover_amount`（$C_\text{prev}$）と `employee_carryover_amount`（$E_\text{prev}$）を初期値として引き継ぎ、各 CONTRIBUTION 処理後に更新する
+   3. セクション 1 の計算式で新しい `avg_cost` と `shares_held_after` を算出する
+   4. `transaction_type` が `SALE` の場合は `realized_gain_loss` も再計算する
 4. 全件再計算完了後、対象取引をまとめて一括保存する（アトミックな更新）
 
 ---

@@ -45,3 +45,5 @@ class Transaction:
     split_ratio_after: Optional[int] = None
     realized_gain_loss_with: Optional[Decimal] = None
     realized_gain_loss_without: Optional[Decimal] = None
+    carryover_amount: Optional[Decimal] = None
+    employee_carryover_amount: Optional[Decimal] = None

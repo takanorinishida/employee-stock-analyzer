@@ -159,3 +159,105 @@ class TestPortfolioSummary:
         assert s.shares_held == D("19.0000")
         assert s.total_contribution == D("20000")
         assert s.realized_gain_loss_with == D("0")
+
+
+# ── 繰越金（carryover）チェーン ──────────────────────────────────────────
+
+class TestCarryover:
+    def test_contribution_with_carryover_sets_employee_carryover(self, tmp_path):
+        """繰越金ありのCONTRIBUTIONがemployee_carryover_amountを計算して保存する"""
+        plan_svc, tx_svc = _make_services(tmp_path)
+        plan = _create_plan(plan_svc)
+        tx = tx_svc.add_transaction(
+            plan.plan_id, TransactionType.CONTRIBUTION, date(2024, 1, 31),
+            shares_quantity=D("2"), contribution_amount=D("10000"),
+            incentive_amount=D("1000"), carryover_amount=D("1000"),
+        )
+        # actual_purchase = 0+10000+1000-1000 = 10000, unit_with = 5000
+        assert tx.avg_cost_with == D("5000.00")
+        # employee_available=10000, total_available=11000
+        # employee_purchase = 10000 * 10000/11000 / 2 = 4545.45...
+        assert tx.avg_cost_without == D("4545.45")
+        # employee_carryover = 10000 * 1000/11000
+        expected_emp_carry = D("10000") * D("1000") / D("11000")
+        assert tx.employee_carryover_amount == expected_emp_carry
+
+    def test_contribution_carryover_chain_two_months(self, tmp_path):
+        """翌月繰越金が連鎖して次月の計算に反映される"""
+        plan_svc, tx_svc = _make_services(tmp_path)
+        plan = _create_plan(plan_svc)
+        # 月1: 株価5000円、2株取得、1000円繰越
+        tx_svc.add_transaction(
+            plan.plan_id, TransactionType.CONTRIBUTION, date(2024, 1, 31),
+            shares_quantity=D("2"), contribution_amount=D("10000"),
+            incentive_amount=D("1000"), carryover_amount=D("1000"),
+        )
+        # 月2: prev_carryover=1000、total=12000、actual=10000、unit=5000
+        tx2 = tx_svc.add_transaction(
+            plan.plan_id, TransactionType.CONTRIBUTION, date(2024, 2, 29),
+            shares_quantity=D("2"), contribution_amount=D("10000"),
+            incentive_amount=D("1000"), carryover_amount=D("2000"),
+        )
+        assert tx2.shares_held_after == D("4.0000")
+        # unit_with = (1000+10000+1000-2000)/2 = 10000/2 = 5000
+        # cumulative avg_with = (2*5000 + 2*5000)/4 = 5000
+        assert tx2.avg_cost_with == D("5000.00")
+
+    def test_carryover_zero_backward_compat(self, tmp_path):
+        """繰越金なし（デフォルト）は従来の計算と同一"""
+        plan_svc, tx_svc = _make_services(tmp_path)
+        plan = _create_plan(plan_svc)
+        tx = tx_svc.add_transaction(
+            plan.plan_id, TransactionType.CONTRIBUTION, date(2024, 1, 10),
+            shares_quantity=D("10"), contribution_amount=D("10000"), incentive_amount=D("500"),
+        )
+        assert tx.avg_cost_with == D("1050.00")
+        assert tx.avg_cost_without == D("1000.00")
+
+    def test_non_contribution_does_not_reset_carryover(self, tmp_path):
+        """SALE取引を挟んでも翌月のCONTRIBUTIONが前CONTRIBUTIONの繰越金を引き継ぐ"""
+        plan_svc, tx_svc = _make_services(tmp_path)
+        plan = _create_plan(plan_svc)
+        # 月1: 10株取得、1000円繰越
+        tx_svc.add_transaction(
+            plan.plan_id, TransactionType.CONTRIBUTION, date(2024, 1, 31),
+            shares_quantity=D("2"), contribution_amount=D("10000"),
+            incentive_amount=D("1000"), carryover_amount=D("1000"),
+        )
+        # 間にSALE（繰越金チェーンをリセットすべきでない）
+        tx_svc.add_transaction(
+            plan.plan_id, TransactionType.SALE, date(2024, 2, 15),
+            shares_quantity=D("1"), sale_price_per_share=D("6000"),
+        )
+        # 月2: prev_carryover=1000 から継続
+        tx3 = tx_svc.add_transaction(
+            plan.plan_id, TransactionType.CONTRIBUTION, date(2024, 2, 29),
+            shares_quantity=D("2"), contribution_amount=D("10000"),
+            incentive_amount=D("1000"), carryover_amount=D("0"),
+        )
+        # actual_purchase = 1000+10000+1000-0 = 12000, unit_with = 6000
+        # moving avg = (1*5000 + 2*6000) / 3 = 5666.67
+        assert tx3.avg_cost_with == D("5666.67")
+
+    def test_recalc_preserves_carryover_chain(self, tmp_path):
+        """月1のcarryoverを編集しても月2の再計算に正しく伝播する"""
+        plan_svc, tx_svc = _make_services(tmp_path)
+        plan = _create_plan(plan_svc)
+        tx1 = tx_svc.add_transaction(
+            plan.plan_id, TransactionType.CONTRIBUTION, date(2024, 1, 31),
+            shares_quantity=D("2"), contribution_amount=D("10000"),
+            incentive_amount=D("1000"), carryover_amount=D("0"),
+        )
+        tx_svc.add_transaction(
+            plan.plan_id, TransactionType.CONTRIBUTION, date(2024, 2, 29),
+            shares_quantity=D("2"), contribution_amount=D("10000"),
+            incentive_amount=D("1000"), carryover_amount=D("0"),
+        )
+        # 月1の繰越金を1000に変更
+        tx_svc.edit_transaction(tx1.transaction_id, carryover_amount=D("1000"))
+        txs = tx_svc.list_transactions(plan.plan_id)
+        # 月1: actual=10000, unit_with=5000
+        assert txs[0].avg_cost_with == D("5000.00")
+        # 月2: prev_carryover=1000, actual=12000, unit_with=6000
+        # moving avg = (2*5000 + 2*6000) / 4 = 5500.00
+        assert txs[1].avg_cost_with == D("5500.00")

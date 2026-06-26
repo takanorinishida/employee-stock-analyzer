@@ -26,6 +26,8 @@ CREATE TABLE IF NOT EXISTS transactions (
     shares_held_after       TEXT NOT NULL,
     realized_gain_loss_with  TEXT,
     realized_gain_loss_without TEXT,
+    carryover_amount         TEXT,
+    employee_carryover_amount TEXT,
     created_at              TEXT NOT NULL,
     updated_at              TEXT NOT NULL
 );

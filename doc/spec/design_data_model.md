@@ -53,6 +53,8 @@ Plan（持株会） 1 ──< Transaction（取引履歴）
 | shares_held_after | 数値(4dp) | ○ | 取引後の保有株数 |
 | realized_gain_loss_with | 数値 | 条件付 | 確定損益・コスト込み（SALE時）（REQ-0010） |
 | realized_gain_loss_without | 数値 | 条件付 | 確定損益・拠出金のみ（SALE時）（REQ-0010） |
+| carryover_amount | 数値 | — | 翌月繰越金（CONTRIBUTION時、オプション）。当月購入後に翌月へ持ち越す残高。（REQ-0017） |
+| employee_carryover_amount | 数値 | — | 繰越金の拠出金按分分（計算値）。avg_cost_without チェーン計算に使用。（REQ-0018） |
 | created_at | 日時 | ○ | 作成日時 |
 | updated_at | 日時 | ○ | 更新日時 |
 
@@ -60,7 +62,7 @@ Plan（持株会） 1 ──< Transaction（取引履歴）
 
 | 値 | 意味 | 必須フィールド | 対応要求 |
 |----|-----|-------------|---------|
-| CONTRIBUTION | 毎月の積立購入（拠出金＋奨励金） | contribution_amount, incentive_amount, shares_quantity | REQ-0003 |
+| CONTRIBUTION | 毎月の積立購入（拠出金＋奨励金） | contribution_amount, incentive_amount, shares_quantity（carryover_amount は任意） | REQ-0003, REQ-0017 |
 | DIVIDEND_REINVESTMENT | 配当金による再投資 | dividend_amount, shares_quantity | REQ-0005 |
 | SALE | 株式売却 | sale_price_per_share, shares_quantity | REQ-0006 |
 | STOCK_SPLIT | 株式分割 | split_ratio_before, split_ratio_after | REQ-0007 |

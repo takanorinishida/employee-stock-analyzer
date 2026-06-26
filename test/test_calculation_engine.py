@@ -21,25 +21,27 @@ D = Decimal
 # ── 数値例 ─────────────────────────────────────────────────────────────
 
 def test_contribution_1_from_zero():
-    """#1: 0 株から CONTRIBUTION 拠出 10000 奨励 500 取得 10 株"""
-    shares, avg_with, avg_without = calc_contribution(
+    """#1: 0 株から CONTRIBUTION 拠出 10000 奨励 500 取得 10 株（繰越金なし）"""
+    shares, avg_with, avg_without, emp_carry = calc_contribution(
         D("0"), D("0"), D("0"),
         D("10"), D("10000"), D("500"),
     )
     assert shares == D("10.0000")
     assert avg_with == D("1050.00")
     assert avg_without == D("1000.00")
+    assert emp_carry == D("0")
 
 
 def test_contribution_2():
-    """#2: CONTRIBUTION 拠出 10000 奨励 500 取得 9 株"""
-    shares, avg_with, avg_without = calc_contribution(
+    """#2: CONTRIBUTION 拠出 10000 奨励 500 取得 9 株（繰越金なし）"""
+    shares, avg_with, avg_without, emp_carry = calc_contribution(
         D("10"), D("1050.00"), D("1000.00"),
         D("9"), D("10000"), D("500"),
     )
     assert shares == D("19.0000")
     assert avg_with == D("1105.26")
     assert avg_without == D("1052.63")
+    assert emp_carry == D("0")
 
 
 def test_dividend_reinvestment_3():
@@ -130,3 +132,58 @@ def test_simulate_sale_profit():
     assert result.tax_without == D("2437")  # 12000 * 0.20315 = 2437.8 → 2437
     assert result.net_proceeds_with == D("17211")    # 1300*15 - 2289 = 19500 - 2289
     assert result.net_proceeds_without == D("17063")  # 19500 - 2437
+
+
+# ── 繰越金あり CONTRIBUTION ────────────────────────────────────────────
+
+def test_contribution_with_carryover_first_month():
+    """翌月繰越金あり・初月（前月繰越 0）: actual_purchase = 10000+1000-1000 = 10000"""
+    # 株価 5000円 × 2株 = 10000円購入、1000円が翌月へ
+    shares, avg_with, avg_without, emp_carry = calc_contribution(
+        D("0"), D("0"), D("0"),
+        D("2"), D("10000"), D("1000"),
+        prev_carryover=D("0"),
+        carryover_amount=D("1000"),
+        prev_employee_carryover=D("0"),
+    )
+    assert shares == D("2.0000")
+    # actual_purchase = 0+10000+1000-1000 = 10000 / 2 = 5000
+    assert avg_with == D("5000.00")
+    # employee_purchase = 10000 * 10000/11000 = 9090.909... / 2 = 4545.454...
+    assert avg_without == D("4545.45")
+    # emp_carry = 10000 * 1000/11000 = 909.09...
+    assert emp_carry == D("10000") * D("1000") / D("11000")
+
+
+def test_contribution_carryover_chain():
+    """翌月繰越金連鎖: 月2は前月繰越 1000 を受け取り actual_purchase = 10000"""
+    # 月1の結果（emp_carry = 10000*1000/11000）
+    prev_emp_carry = D("10000") * D("1000") / D("11000")
+
+    shares, avg_with, avg_without, emp_carry = calc_contribution(
+        D("2"), D("5000.00"), D("4545.45"),
+        D("2"), D("10000"), D("1000"),
+        prev_carryover=D("1000"),
+        carryover_amount=D("2000"),
+        prev_employee_carryover=prev_emp_carry,
+    )
+    assert shares == D("4.0000")
+    # total_available = 1000+10000+1000 = 12000, actual = 12000-2000 = 10000, unit = 5000
+    assert avg_with == D("5000.00")
+    # avg_without_2 = (2*4545.45 + 2*unit_without) / 4
+    # employee_available = prev_emp_carry + 10000, employee_purchase = ... / 2
+    # result should be close to 4545 (same stock price)
+
+
+def test_contribution_zero_carryover_backward_compat():
+    """繰越金なし（デフォルト）= 従来の計算式と同じ"""
+    shares_new, avg_with_new, avg_without_new, _ = calc_contribution(
+        D("0"), D("0"), D("0"),
+        D("10"), D("10000"), D("500"),
+        prev_carryover=D("0"),
+        carryover_amount=D("0"),
+        prev_employee_carryover=D("0"),
+    )
+    # 旧式: unit_with = (10000+500)/10 = 1050, unit_without = 10000/10 = 1000
+    assert avg_with_new == D("1050.00")
+    assert avg_without_new == D("1000.00")
