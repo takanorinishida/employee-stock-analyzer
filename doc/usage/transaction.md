@@ -8,7 +8,7 @@
 
 | 取引種別 | 値 | 必須オプション |
 |---|---|---|
-| 拠出 | `CONTRIBUTION` | `--shares`, `--contribution`, `--incentive` |
+| 拠出 | `CONTRIBUTION` | `--shares`, `--contribution`, `--incentive`（`--carryover` は任意） |
 | 配当再投資 | `DIVIDEND_REINVESTMENT` | `--shares`, `--dividend` |
 | 売却 | `SALE` | `--shares`, `--price` |
 | 株式分割 | `STOCK_SPLIT` | `--split-before`, `--split-after` |
@@ -41,6 +41,7 @@ stock transaction add PLAN_ID [OPTIONS]
 | `--price DECIMAL` | 売却単価（円/株） |
 | `--split-before INT` | 分割・合併前の株数比率 |
 | `--split-after INT` | 分割・合併後の株数比率 |
+| `--carryover DECIMAL` | 翌月繰越金（CONTRIBUTION 時のみ、省略可） |
 
 `--type` と `--date` を省略するとプロンプトで入力を求められます。
 
@@ -51,6 +52,11 @@ stock transaction add PLAN_ID [OPTIONS]
 stock transaction add toyota \
   --type CONTRIBUTION --date 2024-01-10 \
   --shares 10 --contribution 10000 --incentive 500
+
+# 拠出（翌月繰越金あり）: 当月末に1,000円が翌月へ繰り越される場合
+stock transaction add toyota \
+  --type CONTRIBUTION --date 2024-01-31 \
+  --shares 10 --contribution 10000 --incentive 500 --carryover 1000
 
 # 配当再投資: 950円配当で1株取得
 stock transaction add toyota \
@@ -81,6 +87,15 @@ stock transaction add toyota \
   保有株数: 10.0000  平均取得単価(奨励込): 1050.00  (拠出のみ): 1000.00
 ```
 
+翌月繰越金を指定した場合は追加で表示されます。
+
+```
+取引を追加しました: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+  種別: CONTRIBUTION  日付: 2024-01-31
+  保有株数: 10.0000  平均取得単価(奨励込): 950.00  (拠出のみ): 904.55
+  翌月繰越金: 1000
+```
+
 ---
 
 ## transaction list — 取引一覧
@@ -94,12 +109,14 @@ stock transaction list PLAN_ID
 ### 出力例
 
 ```
-ID                                    日付          種別                       株数       平均(込)    平均(除)    損益(込)
-----------------------------------------------------------------------------------------------------------------------------------
-a1b2c3d4-...  2024-01-10  CONTRIBUTION               10        1050.00     1000.00          -
-b2c3d4e5-...  2024-03-01  DIVIDEND_REINVESTMENT        1        1097.50     1000.00          -
-c3d4e5f6-...  2024-06-01  SALE                         5        1097.50     1000.00       1012
+ID                                    日付          種別                       株数       平均(込)    平均(除)    損益(込)    翌月繰越
+-------------------------------------------------------------------------------------------------------------------------------------------------
+a1b2c3d4-...  2024-01-10  CONTRIBUTION               10        1050.00     1000.00          -           -
+b2c3d4e5-...  2024-03-01  DIVIDEND_REINVESTMENT        1        1097.50     1000.00          -           -
+c3d4e5f6-...  2024-06-01  SALE                         5        1097.50     1000.00       1012           -
 ```
+
+`翌月繰越` 列は CONTRIBUTION に繰越金が設定されている場合のみ金額を表示し、それ以外は `-` になります。
 
 ---
 
@@ -119,7 +136,7 @@ stock transaction edit TRANSACTION_ID [OPTIONS]
 
 ### オプション
 
-`transaction add` と同じオプションが指定できます（`--type` は変更不可）。
+`transaction add` と同じオプションが指定できます（`--type` は変更不可）。`--carryover` で翌月繰越金を修正することも可能です。
 
 ### 実行例
 
