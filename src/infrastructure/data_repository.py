@@ -32,6 +32,13 @@ class DataRepository:
             schema = f.read()
         with self._connect() as conn:
             conn.executescript(schema)
+            self._migrate(conn)
+
+    def _migrate(self, conn: sqlite3.Connection) -> None:
+        existing = {row[1] for row in conn.execute("PRAGMA table_info(transactions)").fetchall()}
+        for col in ("carryover_amount", "employee_carryover_amount"):
+            if col not in existing:
+                conn.execute(f"ALTER TABLE transactions ADD COLUMN {col} TEXT")
 
     # ── Plan ──────────────────────────────────────────────────────────────
 
@@ -88,37 +95,40 @@ class DataRepository:
 
     def save_transaction(self, tx: Transaction) -> None:
         sql = """
-            INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(transaction_id) DO UPDATE SET
-                transaction_type         = excluded.transaction_type,
-                transaction_date         = excluded.transaction_date,
-                shares_quantity          = excluded.shares_quantity,
-                contribution_amount      = excluded.contribution_amount,
-                incentive_amount         = excluded.incentive_amount,
-                dividend_amount          = excluded.dividend_amount,
-                sale_price_per_share     = excluded.sale_price_per_share,
-                split_ratio_before       = excluded.split_ratio_before,
-                split_ratio_after        = excluded.split_ratio_after,
-                avg_cost_with            = excluded.avg_cost_with,
-                avg_cost_without         = excluded.avg_cost_without,
-                shares_held_after        = excluded.shares_held_after,
-                realized_gain_loss_with  = excluded.realized_gain_loss_with,
+                transaction_type          = excluded.transaction_type,
+                transaction_date          = excluded.transaction_date,
+                shares_quantity           = excluded.shares_quantity,
+                contribution_amount       = excluded.contribution_amount,
+                incentive_amount          = excluded.incentive_amount,
+                dividend_amount           = excluded.dividend_amount,
+                sale_price_per_share      = excluded.sale_price_per_share,
+                split_ratio_before        = excluded.split_ratio_before,
+                split_ratio_after         = excluded.split_ratio_after,
+                avg_cost_with             = excluded.avg_cost_with,
+                avg_cost_without          = excluded.avg_cost_without,
+                shares_held_after         = excluded.shares_held_after,
+                realized_gain_loss_with   = excluded.realized_gain_loss_with,
                 realized_gain_loss_without = excluded.realized_gain_loss_without,
-                updated_at               = excluded.updated_at
+                carryover_amount          = excluded.carryover_amount,
+                employee_carryover_amount = excluded.employee_carryover_amount,
+                updated_at                = excluded.updated_at
         """
         with self._connect() as conn:
             conn.execute(sql, self._tx_to_tuple(tx))
 
     def save_transactions_bulk(self, transactions: list[Transaction]) -> None:
         sql = """
-            INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO transactions VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ON CONFLICT(transaction_id) DO UPDATE SET
-                avg_cost_with            = excluded.avg_cost_with,
-                avg_cost_without         = excluded.avg_cost_without,
-                shares_held_after        = excluded.shares_held_after,
-                realized_gain_loss_with  = excluded.realized_gain_loss_with,
+                avg_cost_with             = excluded.avg_cost_with,
+                avg_cost_without          = excluded.avg_cost_without,
+                shares_held_after         = excluded.shares_held_after,
+                realized_gain_loss_with   = excluded.realized_gain_loss_with,
                 realized_gain_loss_without = excluded.realized_gain_loss_without,
-                updated_at               = excluded.updated_at
+                employee_carryover_amount = excluded.employee_carryover_amount,
+                updated_at                = excluded.updated_at
         """
         with self._connect() as conn:
             conn.executemany(sql, [self._tx_to_tuple(t) for t in transactions])
@@ -184,9 +194,23 @@ class DataRepository:
             _s(tx.shares_held_after),
             _s(tx.realized_gain_loss_with),
             _s(tx.realized_gain_loss_without),
+            _s(tx.carryover_amount),
+            _s(tx.employee_carryover_amount),
             tx.created_at.isoformat(),
             tx.updated_at.isoformat(),
         )
+
+    def get_latest_contribution_before(
+        self, plan_id: str, before_date: date
+    ) -> Optional[Transaction]:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM transactions WHERE plan_id = ? AND transaction_date < ?"
+                " AND transaction_type = ?"
+                " ORDER BY transaction_date DESC, created_at DESC LIMIT 1",
+                (plan_id, before_date.isoformat(), TransactionType.CONTRIBUTION.value),
+            ).fetchone()
+        return self._row_to_tx(row) if row else None
 
     def _row_to_tx(self, row) -> Transaction:
         return Transaction(
@@ -206,6 +230,8 @@ class DataRepository:
             shares_held_after=_d(row["shares_held_after"]),
             realized_gain_loss_with=_d(row["realized_gain_loss_with"]),
             realized_gain_loss_without=_d(row["realized_gain_loss_without"]),
+            carryover_amount=_d(row["carryover_amount"]),
+            employee_carryover_amount=_d(row["employee_carryover_amount"]),
             created_at=datetime.fromisoformat(row["created_at"]),
             updated_at=datetime.fromisoformat(row["updated_at"]),
         )

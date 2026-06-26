@@ -20,6 +20,7 @@ _EDITABLE_FIELDS = frozenset({
     "sale_price_per_share",
     "split_ratio_before",
     "split_ratio_after",
+    "carryover_amount",
 })
 
 
@@ -42,9 +43,16 @@ class TransactionService:
         prev_avg_with = prev.avg_cost_with if prev else _ZERO
         prev_avg_without = prev.avg_cost_without if prev else _ZERO
 
+        prev_contrib = self._repo.get_latest_contribution_before(plan_id, transaction_date)
+        prev_carryover = prev_contrib.carryover_amount or _ZERO if prev_contrib else _ZERO
+        prev_employee_carryover = (
+            prev_contrib.employee_carryover_amount or _ZERO if prev_contrib else _ZERO
+        )
+
         tx = self._build_transaction(
             plan_id, transaction_type, transaction_date,
             prev_shares, prev_avg_with, prev_avg_without,
+            prev_carryover, prev_employee_carryover,
             **kwargs,
         )
         self._repo.save_transaction(tx)
@@ -134,10 +142,19 @@ class TransactionService:
         prev_avg_with = prev.avg_cost_with if prev else _ZERO
         prev_avg_without = prev.avg_cost_without if prev else _ZERO
 
+        prev_contrib = self._repo.get_latest_contribution_before(plan_id, from_date)
+        prev_carryover = prev_contrib.carryover_amount or _ZERO if prev_contrib else _ZERO
+        prev_employee_carryover = (
+            prev_contrib.employee_carryover_amount or _ZERO if prev_contrib else _ZERO
+        )
+
         affected = self._repo.list_transactions_from_date(plan_id, from_date)
         updated = []
         for tx in affected:
-            tx = self._apply_calc(tx, prev_shares, prev_avg_with, prev_avg_without)
+            tx, prev_carryover, prev_employee_carryover = self._apply_calc(
+                tx, prev_shares, prev_avg_with, prev_avg_without,
+                prev_carryover, prev_employee_carryover,
+            )
             prev_shares = tx.shares_held_after
             prev_avg_with = tx.avg_cost_with
             prev_avg_without = tx.avg_cost_without
@@ -152,16 +169,23 @@ class TransactionService:
         prev_shares: Decimal,
         prev_avg_with: Decimal,
         prev_avg_without: Decimal,
-    ) -> Transaction:
+        prev_carryover: Decimal = _ZERO,
+        prev_employee_carryover: Decimal = _ZERO,
+    ) -> tuple[Transaction, Decimal, Decimal]:
         tt = tx.transaction_type
         if tt == TransactionType.CONTRIBUTION:
-            shares, avg_with, avg_without = engine.calc_contribution(
+            carryover = tx.carryover_amount or _ZERO
+            shares, avg_with, avg_without, new_emp_carryover = engine.calc_contribution(
                 prev_shares, prev_avg_with, prev_avg_without,
                 tx.shares_quantity, tx.contribution_amount, tx.incentive_amount,
+                prev_carryover, carryover, prev_employee_carryover,
             )
             tx.shares_held_after = shares
             tx.avg_cost_with = avg_with
             tx.avg_cost_without = avg_without
+            tx.employee_carryover_amount = new_emp_carryover
+            next_carryover = carryover
+            next_employee_carryover = new_emp_carryover
 
         elif tt == TransactionType.DIVIDEND_REINVESTMENT:
             shares, avg_with, avg_without = engine.calc_dividend_reinvestment(
@@ -171,6 +195,8 @@ class TransactionService:
             tx.shares_held_after = shares
             tx.avg_cost_with = avg_with
             tx.avg_cost_without = avg_without
+            next_carryover = prev_carryover
+            next_employee_carryover = prev_employee_carryover
 
         elif tt == TransactionType.SALE:
             shares, avg_with, avg_without, gain_with, gain_without = engine.calc_sale(
@@ -182,6 +208,8 @@ class TransactionService:
             tx.avg_cost_without = avg_without
             tx.realized_gain_loss_with = gain_with
             tx.realized_gain_loss_without = gain_without
+            next_carryover = prev_carryover
+            next_employee_carryover = prev_employee_carryover
 
         elif tt in (TransactionType.STOCK_SPLIT, TransactionType.REVERSE_SPLIT):
             shares, avg_with, avg_without = engine.calc_split(
@@ -191,9 +219,15 @@ class TransactionService:
             tx.shares_held_after = shares
             tx.avg_cost_with = avg_with
             tx.avg_cost_without = avg_without
+            next_carryover = prev_carryover
+            next_employee_carryover = prev_employee_carryover
+
+        else:
+            next_carryover = prev_carryover
+            next_employee_carryover = prev_employee_carryover
 
         tx.updated_at = datetime.now()
-        return tx
+        return tx, next_carryover, next_employee_carryover
 
     def _build_transaction(
         self,
@@ -203,6 +237,8 @@ class TransactionService:
         prev_shares: Decimal,
         prev_avg_with: Decimal,
         prev_avg_without: Decimal,
+        prev_carryover: Decimal = _ZERO,
+        prev_employee_carryover: Decimal = _ZERO,
         **kwargs,
     ) -> Transaction:
         valid = {k: v for k, v in kwargs.items() if k in _EDITABLE_FIELDS - {"transaction_date"}}
@@ -219,7 +255,11 @@ class TransactionService:
             updated_at=now,
             **valid,
         )
-        return self._apply_calc(tx, prev_shares, prev_avg_with, prev_avg_without)
+        tx, _, _ = self._apply_calc(
+            tx, prev_shares, prev_avg_with, prev_avg_without,
+            prev_carryover, prev_employee_carryover,
+        )
+        return tx
 
     def _get_or_raise(self, transaction_id: str) -> Transaction:
         tx = self._repo.get_transaction(transaction_id)

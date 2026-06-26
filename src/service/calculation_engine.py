@@ -26,10 +26,22 @@ def calc_contribution(
     new_shares: Decimal,
     contribution: Decimal,
     incentive: Decimal,
-) -> tuple[Decimal, Decimal, Decimal]:
-    """CONTRIBUTION: 取得後の (shares_held_after, avg_cost_with, avg_cost_without) を返す"""
-    unit_with = (contribution + incentive) / new_shares
-    unit_without = contribution / new_shares
+    prev_carryover: Decimal = Decimal("0"),
+    carryover_amount: Decimal = Decimal("0"),
+    prev_employee_carryover: Decimal = Decimal("0"),
+) -> tuple[Decimal, Decimal, Decimal, Decimal]:
+    """CONTRIBUTION: (shares_held_after, avg_cost_with, avg_cost_without, employee_carryover_amount) を返す"""
+    total_available = prev_carryover + contribution + incentive
+    if total_available == Decimal("0"):
+        return (prev_shares, prev_avg_with, prev_avg_without, Decimal("0"))
+    actual_purchase = total_available - carryover_amount
+    unit_with = actual_purchase / new_shares
+
+    employee_available = prev_employee_carryover + contribution
+    employee_purchase = employee_available * actual_purchase / total_available
+    unit_without = employee_purchase / new_shares
+    new_employee_carryover = employee_available * carryover_amount / total_available
+
     total = prev_shares + new_shares
     new_avg_with = (prev_shares * prev_avg_with + new_shares * unit_with) / total
     new_avg_without = (prev_shares * prev_avg_without + new_shares * unit_without) / total
@@ -37,6 +49,7 @@ def calc_contribution(
         _trunc_shares(total),
         _round_avg_cost(new_avg_with),
         _round_avg_cost(new_avg_without),
+        new_employee_carryover,
     )
 
 
